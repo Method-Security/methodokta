@@ -1,0 +1,33 @@
+types:
+  RoleType:
+    enum:
+        - SUPER_ADMIN
+        - ADMIN
+        - USER
+        - READ_ONLY
+        - UNKNOWN
+  StatusType:
+    enum:
+      - ACTIVE
+      - INACTIVE
+      - UNKNOWN
+  ApplicationInfo:
+    properties:
+      uid: string
+      name: string
+  GroupInfo:
+    properties:
+      uid: string
+      name: string
+  RoleInfo:
+    properties:
+      uid: string
+      name: optional<string>
+      type:  optional<RoleType>
+      description: optional<string>
+      created:  optional<datetime>
+  UserInfo:
+    properties:
+      uid: string
+      email: string
+

@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"errors"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/Method-Security/pkg/signal"
 	"github.com/Method-Security/pkg/writer"
 	"github.com/method-security/methodokta/internal/config"
+	"github.com/okta/okta-sdk-golang/v5/okta"
 	"github.com/palantir/pkg/datetime"
 	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 	"github.com/spf13/cobra"
@@ -18,6 +20,7 @@ type MethodOkta struct {
 	RootFlags    config.RootFlags
 	OutputConfig writer.OutputConfig
 	OutputSignal signal.Signal
+	OktaConfig   *okta.Configuration
 	RootCmd      *cobra.Command
 }
 
@@ -27,6 +30,10 @@ func NewMethodOkta(version string) *MethodOkta {
 		RootFlags: config.RootFlags{
 			Quiet:   false,
 			Verbose: false,
+			OktaData: config.OktaData{
+				Domain:   "",
+				APIToken: "",
+			},
 		},
 		OutputConfig: writer.NewOutputConfig(nil, writer.NewFormat(writer.SIGNAL)),
 		OutputSignal: signal.NewSignal(nil, datetime.DateTime(time.Now()), nil, 0, nil),
@@ -58,6 +65,12 @@ func (a *MethodOkta) InitRootCommand() {
 			a.OutputConfig = writer.NewOutputConfig(outputFilePointer, format)
 			cmd.SetContext(svc1log.WithLogger(cmd.Context(), config.InitializeLogging(cmd, &a.RootFlags)))
 
+			config, err := getOktaConfig(a)
+			if err != nil {
+				return err
+			}
+			a.OktaConfig = config
+
 			return nil
 		},
 
@@ -80,6 +93,10 @@ func (a *MethodOkta) InitRootCommand() {
 	a.RootCmd.PersistentFlags().BoolVarP(&a.RootFlags.Verbose, "verbose", "v", false, "Verbose output")
 	a.RootCmd.PersistentFlags().StringVarP(&outputFile, "output-file", "f", "", "Path to output file. If blank, will output to STDOUT")
 	a.RootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "signal", "Output format (signal, json, yaml). Default value is signal")
+
+	//OktaConfig Flags
+	a.RootCmd.PersistentFlags().StringVarP(&a.RootFlags.OktaData.Domain, "domain", "d", "", "Okta Domain (ie. https://myokta.okta.com)")
+	a.RootCmd.PersistentFlags().StringVarP(&a.RootFlags.OktaData.APIToken, "apitoken", "a", "", "Okta API Token")
 
 	versionCmd := &cobra.Command{
 		Use:   "version",
@@ -112,4 +129,36 @@ func validateOutputFormat(output string) (writer.Format, error) {
 		return writer.Format{}, errors.New("invalid output format. Valid formats are: json, yaml, signal")
 	}
 	return writer.NewFormat(format), nil
+}
+
+func getOktaConfig(a *MethodOkta) (*okta.Configuration, error) {
+	// Get Domain
+	domain := ""
+	if a.RootFlags.OktaData.Domain != "" {
+		domain = a.RootFlags.OktaData.APIToken
+	} else if len(os.Getenv("OKTA_DOMAIN")) != 0 {
+		domain = os.Getenv("OKTA_DOMAIN")
+	} else {
+		err := errors.New("please provide a Okta domain either by flag or ENV variable")
+		return nil, err
+	}
+
+	//Get API Token
+	apiToken := ""
+	if a.RootFlags.OktaData.APIToken != "" {
+		apiToken = a.RootFlags.OktaData.APIToken
+	} else if len(os.Getenv("OKTA_API_TOKEN")) != 0 {
+		apiToken = os.Getenv("OKTA_API_TOKEN")
+	} else {
+		err := errors.New("please provide an API Token either by flag or ENV variable")
+		return nil, err
+	}
+
+	// Create Config
+	config, err := okta.NewConfiguration(okta.WithOrgUrl(domain), okta.WithToken(apiToken))
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }

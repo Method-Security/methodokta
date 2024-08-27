@@ -1,0 +1,19 @@
+imports:
+  common: ./common.yml
+types:
+  Device:
+    properties:
+      uid: string
+      name: string
+      platform: string
+      manufacturer: optional<string>
+      model: optional<string>
+      osVersion: optional<string>
+      status: common.StatusType
+      created: datetime
+      users: optional<list<common.UserInfo>>
+  DeviceReport:
+    properties:
+      org: string
+      devices: optional<list<Device>>
+      errors: optional<list<string>>

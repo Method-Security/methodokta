@@ -1,0 +1,24 @@
+imports:
+  common: ./common.yml
+types:
+  GroupType:
+    enum:
+        - OKTA_GROUP
+        - APP_GROUP
+        - BUILT_IN
+        - UNKNOWN
+  Group:
+      properties:
+        uid: string
+        name: string
+        type: GroupType
+        description: optional<string>
+        created: datetime
+        applications: optional<list<common.ApplicationInfo>>
+        roles: optional<list<common.RoleInfo>>
+        users: optional<list<common.UserInfo>>
+  GroupReport:
+    properties:
+      org: string
+      groups: optional<list<Group>>
+      errors: optional<list<string>>

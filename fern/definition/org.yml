@@ -1,0 +1,15 @@
+imports:
+  common: ./common.yml
+types:
+  OrgInfo:
+    properties:
+      uid: string
+      companyName: optional<string>
+      url: string
+      status: common.StatusType
+      created: datetime
+  OrgReport:
+    properties:
+      org: string
+      organization: OrgInfo
+      errors: optional<list<string>>
