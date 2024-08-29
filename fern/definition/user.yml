@@ -1,0 +1,20 @@
+imports:
+  common: ./common.yml
+types:
+  User:
+    properties:
+      uid: string
+      firstname: optional<string>
+      lastname: optional<string>
+      email: string
+      status: common.StatusType
+      created: datetime
+      passwordChanged: optional<datetime>
+      applications: optional<list<common.ApplicationInfo>>
+      groups: optional<list<common.GroupInfo>>
+      roles: optional<list<common.RoleInfo>>
+  UserReport:
+    properties:
+      org: string
+      users: optional<list<User>>
+      errors: optional<list<string>>

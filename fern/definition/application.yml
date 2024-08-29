@@ -1,0 +1,25 @@
+imports:
+  common: ./common.yml
+types:
+  AuthType:
+    enum:
+      - BROWSER_PLUGIN
+      - OPENID_CONNECT
+      - SAML_2_0
+      - UNKNOWN
+  Application:
+      properties:
+        uid: string
+        name: string
+        label: string
+        url: optional<string>
+        status: common.StatusType
+        created: datetime
+        authMethod: AuthType
+        groups: optional<list<common.GroupInfo>>
+        users: optional<list<common.UserInfo>>
+  ApplicationReport:
+    properties:
+      org: string
+      applications: optional<list<Application>>
+      errors: optional<list<string>>
