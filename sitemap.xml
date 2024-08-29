@@ -2,37 +2,62 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://method-security.github.io/methodokta/index.html</loc>
-         <lastmod>2024-08-26</lastmod>
+         <lastmod>2024-08-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://method-security.github.io/methodokta/community/community.html</loc>
-         <lastmod>2024-08-26</lastmod>
+         <lastmod>2024-08-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://method-security.github.io/methodokta/development/adding.html</loc>
-         <lastmod>2024-08-26</lastmod>
+         <lastmod>2024-08-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://method-security.github.io/methodokta/development/principles.html</loc>
-         <lastmod>2024-08-26</lastmod>
+         <lastmod>2024-08-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://method-security.github.io/methodokta/development/setup.html</loc>
-         <lastmod>2024-08-26</lastmod>
+         <lastmod>2024-08-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://method-security.github.io/methodokta/docs/application.html</loc>
+         <lastmod>2024-08-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://method-security.github.io/methodokta/docs/device.html</loc>
+         <lastmod>2024-08-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://method-security.github.io/methodokta/docs/group.html</loc>
+         <lastmod>2024-08-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://method-security.github.io/methodokta/docs/org.html</loc>
+         <lastmod>2024-08-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://method-security.github.io/methodokta/docs/user.html</loc>
+         <lastmod>2024-08-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://method-security.github.io/methodokta/getting-started/basic-usage.html</loc>
-         <lastmod>2024-08-26</lastmod>
+         <lastmod>2024-08-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://method-security.github.io/methodokta/getting-started/installation.html</loc>
-         <lastmod>2024-08-26</lastmod>
+         <lastmod>2024-08-29</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>

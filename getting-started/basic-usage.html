@@ -479,6 +479,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docker
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -551,6 +560,159 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Capabilities
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Capabilities
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/application.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Application
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/device.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Device
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/group.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Group
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/org.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Org
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/user.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    User
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -777,6 +939,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docker
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -803,7 +974,13 @@
 <h1 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">#</a></h1>
 <p>Before you get started, you will need to export Okta credentials that you want methodOkta to utilize as environment variables. </p>
 <h2 id="binaries">Binaries<a class="headerlink" href="#binaries" title="Permanent link">#</a></h2>
-<p>Running as a binary means you don't need to do anything additional for methodOkta to leverage the environment variables you have already exported. You can test that things are working properly by running:</p>
+<p>Running as a binary means you don't need to do anything additional for methodokta to leverage the environment variables you have already exported. You can test that things are working properly by running:</p>
+<div class="highlight"><pre><span></span><code>methodokta<span class="w"> </span>user<span class="w"> </span>enumerate<span class="w"> </span>--api-token<span class="w"> </span>xxxx<span class="w"> </span>--domain<span class="w"> </span>myoktadomain
+</code></pre></div>
+<h2 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">#</a></h2>
+<p>Running an authenticated workflow with methodokta as a Docker container requires that you pass okta credentials to the container:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span><span class="nv">OKTA_API_TOKEN</span><span class="o">=</span><span class="s2">&quot;XXXX&quot;</span><span class="w"> </span>-e<span class="w"> </span><span class="nv">OKTA_DOMAIN</span><span class="o">=</span><span class="s2">&quot;myoktadomain&quot;</span><span class="w"> </span>methodsecurity/methodokta
+</code></pre></div>
 
 
 

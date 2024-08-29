@@ -500,6 +500,159 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Capabilities
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Capabilities
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/application.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Application
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/device.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Device
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/group.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Group
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/org.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Org
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docs/user.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    User
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -751,11 +904,11 @@
 <p>By design, methodokta breaks every unique K8s resource into its own top level command. If you are looking to add a brand new capability to the tool, you can take the following steps.</p>
 <ol>
 <li>Add a file to <code>cmd/</code> that corresponds to the sub-command name you'd like to add to the <code>methodokta</code> CLI</li>
-<li>You can use <code>cmd/pod.go</code> as a template</li>
+<li>You can use <code>cmd/user.go</code> as a template</li>
 <li>Your file needs to be a member function of the <code>methodokta</code> struct and should be of the form <code>Init&lt;cmd&gt;Command</code></li>
 <li>Add a new member to the <code>methodokta</code> struct in <code>cmd/root.go</code> that corresponsds to your command name. Remember, the first letter must be capitalized.</li>
 <li>Call your <code>Init</code> function from <code>main.go</code></li>
-<li>Add logic to your commands runtime and put it in its own package within <code>internal</code> (e.g., <code>internal/pod</code>)</li>
+<li>Add logic to your commands runtime and put it in its own package within <code>internal</code> (e.g., <code>internal/user</code>)</li>
 </ol>
 
 
