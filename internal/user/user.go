@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strings"
 	"time"
 
 	methodokta "github.com/method-security/methodokta/generated/go"
@@ -83,7 +84,12 @@ func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*method
 				if err != nil {
 					errors = append(errors, err.Error())
 				} else {
-					application := methodokta.ApplicationInfo{Uid: result["id"].(string), Name: result["label"].(string)}
+					appName := result["label"].(string)
+					if strings.Contains(appName, "Google Workspace") {
+						appName = "Google Workspace"
+					}
+					application := methodokta.ApplicationInfo{Uid: result["appInstanceId"].(string), Name: appName}
+
 					user.Applications = append(user.Applications, &application)
 				}
 			}
