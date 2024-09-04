@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"time"
 
 	methodokta "github.com/method-security/methodokta/generated/go"
 	"github.com/okta/okta-sdk-golang/v5/okta"
@@ -36,6 +37,7 @@ func EnumerateGroup(ctx context.Context, oktaConfig *okta.Configuration) (*metho
 			return &methodokta.GroupReport{}, err
 		}
 		allGroups = append(allGroups, groups...)
+		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Groups

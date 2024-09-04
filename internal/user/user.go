@@ -38,6 +38,7 @@ func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*method
 			return &methodokta.UserReport{}, err
 		}
 		allUsers = append(allUsers, users...)
+		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Users

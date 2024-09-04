@@ -3,6 +3,7 @@ package device
 import (
 	"context"
 	"net/url"
+	"time"
 
 	methodokta "github.com/method-security/methodokta/generated/go"
 	"github.com/okta/okta-sdk-golang/v5/okta"
@@ -35,7 +36,7 @@ func EnumerateDevice(ctx context.Context, oktaConfig *okta.Configuration) (*meth
 			return &methodokta.DeviceReport{}, err
 		}
 		allDevices = append(allDevices, devices...)
-
+		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Applications

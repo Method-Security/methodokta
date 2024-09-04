@@ -38,6 +38,7 @@ func EnumerateApplication(ctx context.Context, oktaConfig *okta.Configuration) (
 			return &methodokta.ApplicationReport{}, err
 		}
 		allApps = append(allApps, apps...)
+		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Applications
