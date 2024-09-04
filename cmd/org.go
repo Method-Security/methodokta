@@ -17,7 +17,7 @@ func (a *MethodOkta) InitOrgCommand() {
 		Short: "Enumerate Orgs",
 		Long:  `Enumerate Orgs`,
 		Run: func(cmd *cobra.Command, args []string) {
-			report, err := org.EnumerateOrg(cmd.Context(), a.OktaConfig)
+			report, err := org.EnumerateOrg(cmd.Context(), a.RequestSleep, a.OktaConfig)
 			if err != nil {
 				errorMessage := err.Error()
 				a.OutputSignal.ErrorMessage = &errorMessage

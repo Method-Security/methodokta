@@ -21,6 +21,7 @@ type MethodOkta struct {
 	OutputConfig writer.OutputConfig
 	OutputSignal signal.Signal
 	OktaConfig   *okta.Configuration
+	RequestSleep time.Duration
 	RootCmd      *cobra.Command
 }
 
@@ -28,8 +29,9 @@ func NewMethodOkta(version string) *MethodOkta {
 	methodOkta := MethodOkta{
 		version: version,
 		RootFlags: config.RootFlags{
-			Quiet:   false,
-			Verbose: false,
+			Quiet:        false,
+			Verbose:      false,
+			RequestSleep: 0,
 			OktaData: config.OktaData{
 				Domain:   "",
 				APIToken: "",
@@ -65,6 +67,10 @@ func (a *MethodOkta) InitRootCommand() {
 			a.OutputConfig = writer.NewOutputConfig(outputFilePointer, format)
 			cmd.SetContext(svc1log.WithLogger(cmd.Context(), config.InitializeLogging(cmd, &a.RootFlags)))
 
+			// Rate Limit wait Parameter
+			a.RequestSleep = 10 * time.Second
+
+			// Okta Configuration
 			config, err := getOktaConfig(a)
 			if err != nil {
 				return err

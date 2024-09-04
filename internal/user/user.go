@@ -11,7 +11,7 @@ import (
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*methodokta.UserReport, error) {
+func EnumerateUser(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.UserReport, error) {
 	resources := methodokta.UserReport{}
 	errors := []string{}
 
@@ -27,7 +27,12 @@ func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*method
 	var allUsers []okta.User
 	users, resp, err := client.UserAPI.ListUsers(ctx).Execute()
 	if err != nil {
-		return &methodokta.UserReport{}, err
+		errors = append(errors, err.Error())
+		time.Sleep(sleep)
+		users, resp, err = client.UserAPI.ListUsers(ctx).Execute()
+		if err != nil {
+			return &methodokta.UserReport{}, err
+		}
 	}
 	allUsers = append(allUsers, users...)
 	for resp.HasNextPage() {
@@ -35,10 +40,14 @@ func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*method
 		cursor := parsedURL.Query().Get("after")
 		users, resp, err = client.UserAPI.ListUsers(ctx).After(cursor).Execute()
 		if err != nil {
-			return &methodokta.UserReport{}, err
+			errors = append(errors, err.Error())
+			time.Sleep(sleep)
+			users, resp, err = client.UserAPI.ListUsers(ctx).After(cursor).Execute()
+			if err != nil {
+				return &methodokta.UserReport{}, err
+			}
 		}
 		allUsers = append(allUsers, users...)
-		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Users

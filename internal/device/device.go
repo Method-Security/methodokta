@@ -9,14 +9,14 @@ import (
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateDevice(ctx context.Context, oktaConfig *okta.Configuration) (*methodokta.DeviceReport, error) {
+func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.DeviceReport, error) {
 	resources := methodokta.DeviceReport{}
 	errors := []string{}
 
 	client := okta.NewAPIClient(oktaConfig)
 
 	// Org UID
-	org, _, err := client.OrgSettingAPI.GetOrgSettings(context.Background()).Execute()
+	org, _, err := client.OrgSettingAPI.GetOrgSettings(ctx).Execute()
 	if err != nil {
 		return &methodokta.DeviceReport{}, err
 	}
@@ -24,7 +24,12 @@ func EnumerateDevice(ctx context.Context, oktaConfig *okta.Configuration) (*meth
 	// Fetch all Devices
 	devices, resp, err := client.DeviceAPI.ListDevices(ctx).Expand("").Execute()
 	if err != nil {
-		return &methodokta.DeviceReport{}, err
+		errors = append(errors, err.Error())
+		time.Sleep(sleep)
+		devices, resp, err = client.DeviceAPI.ListDevices(ctx).Expand("").Execute()
+		if err != nil {
+			return &methodokta.DeviceReport{}, err
+		}
 	}
 	var allDevices []okta.DeviceList
 	allDevices = append(allDevices, devices...)
@@ -33,10 +38,14 @@ func EnumerateDevice(ctx context.Context, oktaConfig *okta.Configuration) (*meth
 		cursor := parsedURL.Query().Get("after")
 		devices, resp, err = client.DeviceAPI.ListDevices(ctx).After(cursor).Execute()
 		if err != nil {
-			return &methodokta.DeviceReport{}, err
+			errors = append(errors, err.Error())
+			time.Sleep(sleep)
+			devices, resp, err = client.DeviceAPI.ListDevices(ctx).After(cursor).Execute()
+			if err != nil {
+				return &methodokta.DeviceReport{}, err
+			}
 		}
 		allDevices = append(allDevices, devices...)
-		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Applications

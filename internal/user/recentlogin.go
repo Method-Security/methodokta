@@ -11,9 +11,14 @@ import (
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string, oktaConfig *okta.Configuration) (*methodokta.LoginReport, error) {
+func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string, days int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.LoginReport, error) {
 	resources := methodokta.LoginReport{}
 	errors := []string{}
+
+	// Query parameters
+	since := time.Now().AddDate(0, 0, -days)
+	limit := int32(1000)
+	query := buildSystemLogQuery(userFlag, applicationFlag)
 
 	client := okta.NewAPIClient(oktaConfig)
 
@@ -24,30 +29,30 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	}
 
 	// Fetch System Logs for Application Logins
-	q := "user.authentication.sso, "
-	if userFlag != "" {
-		q += userFlag + ", "
-	}
-	if applicationFlag != "" {
-		q += applicationFlag + ", "
-	}
 	var allLogs []okta.LogEvent
-	logs, resp, err := client.SystemLogAPI.ListLogEvents(ctx).Q(q).Limit(1000).Execute()
-
+	logs, resp, err := client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).Limit(limit).Execute()
 	if err != nil {
-		return &methodokta.LoginReport{}, err
+		errors = append(errors, err.Error())
+		time.Sleep(sleep)
+		logs, resp, err = client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).Limit(limit).Execute()
+		if err != nil {
+			return &methodokta.LoginReport{}, err
+		}
 	}
 	allLogs = append(allLogs, logs...)
 	for resp.HasNextPage() {
 		parsedURL, _ := url.Parse(resp.NextPage())
 		cursor := parsedURL.Query().Get("after")
-		logs, resp, err = client.SystemLogAPI.ListLogEvents(ctx).Q(q).After(cursor).Limit(1000).Execute()
-
+		logs, resp, err = client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).After(cursor).Limit(limit).Execute()
 		if err != nil {
-			return &methodokta.LoginReport{}, err
+			errors = append(errors, err.Error())
+			time.Sleep(sleep)
+			logs, resp, err = client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).After(cursor).Limit(limit).Execute()
+			if err != nil {
+				return &methodokta.LoginReport{}, err
+			}
 		}
 		allLogs = append(allLogs, logs...)
-		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Logs to find recent login
@@ -102,4 +107,15 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 		Errors: errors,
 	}
 	return &resources, nil
+}
+
+func buildSystemLogQuery(userFlag, applicationFlag string) string {
+	query := "user.authentication.sso"
+	if userFlag != "" {
+		query += ", " + userFlag
+	}
+	if applicationFlag != "" {
+		query += ", " + applicationFlag
+	}
+	return query
 }

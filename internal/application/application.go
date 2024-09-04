@@ -11,14 +11,14 @@ import (
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateApplication(ctx context.Context, oktaConfig *okta.Configuration) (*methodokta.ApplicationReport, error) {
+func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.ApplicationReport, error) {
 	resources := methodokta.ApplicationReport{}
 	errors := []string{}
 
 	client := okta.NewAPIClient(oktaConfig)
 
 	// Org UID
-	org, _, err := client.OrgSettingAPI.GetOrgSettings(context.Background()).Execute()
+	org, _, err := client.OrgSettingAPI.GetOrgSettings(ctx).Execute()
 	if err != nil {
 		return &methodokta.ApplicationReport{}, err
 	}
@@ -26,7 +26,12 @@ func EnumerateApplication(ctx context.Context, oktaConfig *okta.Configuration) (
 	// Fetch all Applications
 	apps, resp, err := client.ApplicationAPI.ListApplications(ctx).Expand("").Execute()
 	if err != nil {
-		return &methodokta.ApplicationReport{}, err
+		errors = append(errors, err.Error())
+		time.Sleep(sleep)
+		apps, resp, err = client.ApplicationAPI.ListApplications(ctx).Expand("").Execute()
+		if err != nil {
+			return &methodokta.ApplicationReport{}, err
+		}
 	}
 	var allApps []okta.ListApplications200ResponseInner
 	allApps = append(allApps, apps...)
@@ -35,10 +40,14 @@ func EnumerateApplication(ctx context.Context, oktaConfig *okta.Configuration) (
 		cursor := parsedURL.Query().Get("after")
 		apps, resp, err = client.ApplicationAPI.ListApplications(ctx).After(cursor).Execute()
 		if err != nil {
-			return &methodokta.ApplicationReport{}, err
+			errors = append(errors, err.Error())
+			time.Sleep(sleep)
+			apps, resp, err = client.ApplicationAPI.ListApplications(ctx).After(cursor).Execute()
+			if err != nil {
+				return &methodokta.ApplicationReport{}, err
+			}
 		}
 		allApps = append(allApps, apps...)
-		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Applications

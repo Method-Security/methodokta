@@ -10,7 +10,7 @@ import (
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateGroup(ctx context.Context, oktaConfig *okta.Configuration) (*methodokta.GroupReport, error) {
+func EnumerateGroup(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.GroupReport, error) {
 	resources := methodokta.GroupReport{}
 	errors := []string{}
 
@@ -25,7 +25,12 @@ func EnumerateGroup(ctx context.Context, oktaConfig *okta.Configuration) (*metho
 	// Fetch all Groups
 	groups, resp, err := client.GroupAPI.ListGroups(ctx).Execute()
 	if err != nil {
-		return &methodokta.GroupReport{}, err
+		errors = append(errors, err.Error())
+		time.Sleep(sleep)
+		groups, resp, err = client.GroupAPI.ListGroups(ctx).Execute()
+		if err != nil {
+			return &methodokta.GroupReport{}, err
+		}
 	}
 	var allGroups []okta.Group
 	allGroups = append(allGroups, groups...)
@@ -34,10 +39,14 @@ func EnumerateGroup(ctx context.Context, oktaConfig *okta.Configuration) (*metho
 		cursor := parsedURL.Query().Get("after")
 		groups, resp, err = client.GroupAPI.ListGroups(ctx).After(cursor).Execute()
 		if err != nil {
-			return &methodokta.GroupReport{}, err
+			errors = append(errors, err.Error())
+			time.Sleep(sleep)
+			groups, resp, err = client.GroupAPI.ListGroups(ctx).After(cursor).Execute()
+			if err != nil {
+				return &methodokta.GroupReport{}, err
+			}
 		}
 		allGroups = append(allGroups, groups...)
-		time.Sleep(1000 * time.Millisecond)
 	}
 
 	// Loop through Groups

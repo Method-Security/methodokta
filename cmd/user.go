@@ -17,7 +17,7 @@ func (a *MethodOkta) InitUserCommand() {
 		Short: "Enumerate Users",
 		Long:  `Enumerate Users`,
 		Run: func(cmd *cobra.Command, args []string) {
-			report, err := user.EnumerateUser(cmd.Context(), a.OktaConfig)
+			report, err := user.EnumerateUser(cmd.Context(), a.RequestSleep, a.OktaConfig)
 			if err != nil {
 				errorMessage := err.Error()
 				a.OutputSignal.ErrorMessage = &errorMessage
@@ -46,8 +46,15 @@ func (a *MethodOkta) InitUserCommand() {
 				a.OutputSignal.Status = 1
 				return
 			}
+			daysFlag, err := cmd.Flags().GetInt("days")
+			if err != nil {
+				errorMessage := err.Error()
+				a.OutputSignal.ErrorMessage = &errorMessage
+				a.OutputSignal.Status = 1
+				return
+			}
 
-			report, err := user.EnumerateLogin(cmd.Context(), userFlag, applicationFlag, a.OktaConfig)
+			report, err := user.EnumerateLogin(cmd.Context(), userFlag, applicationFlag, daysFlag, a.RequestSleep, a.OktaConfig)
 			if err != nil {
 				errorMessage := err.Error()
 				a.OutputSignal.ErrorMessage = &errorMessage
@@ -59,6 +66,7 @@ func (a *MethodOkta) InitUserCommand() {
 
 	loginCmd.Flags().String("user", "", "List the User Account UID to gather Login data for (Defaults to all).")
 	loginCmd.Flags().String("application", "", "List the Application UID to gather Login data for (Defaults to all).")
+	loginCmd.Flags().Int("days", 90, "Number representing how many days to look back in the logs (Defaults to 90).")
 
 	userCmd.AddCommand(enumerateCmd)
 	userCmd.AddCommand(loginCmd)
