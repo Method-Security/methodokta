@@ -15,11 +15,6 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	resources := methodokta.LoginReport{}
 	errors := []string{}
 
-	// Query parameters
-	since := time.Now().AddDate(0, 0, -days)
-	limit := int32(1000)
-	query := buildSystemLogQuery(userFlag, applicationFlag)
-
 	client := okta.NewAPIClient(oktaConfig)
 
 	// Org UID
@@ -28,31 +23,17 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 		return &methodokta.LoginReport{}, err
 	}
 
-	// Fetch System Logs for Application Logins
-	var allLogs []okta.LogEvent
-	logs, resp, err := client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).Limit(limit).Execute()
+	// Query parameters
+	since := time.Now().AddDate(0, 0, -days)
+	limit := int32(1000)
+	query := buildSystemLogQuery(userFlag, applicationFlag)
+	filter := "eventType eq \"user.authentication.sso\""
+
+	// Fetch System Logs for Application SSO Logins
+	loginEventCmd := client.SystemLogAPI.ListLogEvents(ctx).Q(query).Filter(filter).Since(since).Limit(limit)
+	allLogs, err := fetchLoginEventsWithRetry(loginEventCmd, sleep)
 	if err != nil {
-		errors = append(errors, err.Error())
-		time.Sleep(sleep)
-		logs, resp, err = client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).Limit(limit).Execute()
-		if err != nil {
-			return &methodokta.LoginReport{}, err
-		}
-	}
-	allLogs = append(allLogs, logs...)
-	for resp.HasNextPage() {
-		parsedURL, _ := url.Parse(resp.NextPage())
-		cursor := parsedURL.Query().Get("after")
-		logs, resp, err = client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).After(cursor).Limit(limit).Execute()
-		if err != nil {
-			errors = append(errors, err.Error())
-			time.Sleep(sleep)
-			logs, resp, err = client.SystemLogAPI.ListLogEvents(ctx).Q(query).Since(since).After(cursor).Limit(limit).Execute()
-			if err != nil {
-				return &methodokta.LoginReport{}, err
-			}
-		}
-		allLogs = append(allLogs, logs...)
+		return &methodokta.LoginReport{}, err
 	}
 
 	// Loop through Logs to find recent login
@@ -109,8 +90,44 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	return &resources, nil
 }
 
+func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Duration) ([]okta.LogEvent, error) {
+	var allLogs []okta.LogEvent
+	var changePage bool
+	sleepExp := sleep
+	pastCursor := "-1"
+	currentCursor := ""
+	for pastCursor != currentCursor {
+		logs, resp, err := cmd.After(currentCursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			changePage = false
+			sleepExp *= 2
+		} else {
+			changePage = true
+		}
+		if changePage {
+			sleepExp = sleep
+			pastCursor = currentCursor
+			parsedURL, _ := url.Parse(resp.NextPage())
+			currentCursor = parsedURL.Query().Get("after")
+			allLogs = append(allLogs, logs...)
+		}
+	}
+	return allLogs, nil
+}
+
+func retry(sleep time.Duration, err error) bool {
+	if err.Error() != "too many requests" {
+		return false
+	}
+	time.Sleep(sleep)
+	return true
+}
+
 func buildSystemLogQuery(userFlag, applicationFlag string) string {
-	query := "user.authentication.sso"
+	query := ""
 	if userFlag != "" {
 		query += ", " + userFlag
 	}

@@ -22,33 +22,13 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 	}
 
 	// Fetch all Devices
-	devices, resp, err := client.DeviceAPI.ListDevices(ctx).Expand("").Execute()
+	getDevicescmd := client.DeviceAPI.ListDevices(ctx).Expand("")
+	allDevices, err := fetchDevicesWithRetry(getDevicescmd, sleep)
 	if err != nil {
-		errors = append(errors, err.Error())
-		time.Sleep(sleep)
-		devices, resp, err = client.DeviceAPI.ListDevices(ctx).Expand("").Execute()
-		if err != nil {
-			return &methodokta.DeviceReport{}, err
-		}
-	}
-	var allDevices []okta.DeviceList
-	allDevices = append(allDevices, devices...)
-	for resp.HasNextPage() {
-		parsedURL, _ := url.Parse(resp.NextPage())
-		cursor := parsedURL.Query().Get("after")
-		devices, resp, err = client.DeviceAPI.ListDevices(ctx).After(cursor).Execute()
-		if err != nil {
-			errors = append(errors, err.Error())
-			time.Sleep(sleep)
-			devices, resp, err = client.DeviceAPI.ListDevices(ctx).After(cursor).Execute()
-			if err != nil {
-				return &methodokta.DeviceReport{}, err
-			}
-		}
-		allDevices = append(allDevices, devices...)
+		return &methodokta.DeviceReport{}, err
 	}
 
-	// Loop through Applications
+	// Loop through Devices
 	var deviceList []*methodokta.Device
 	for _, d := range allDevices {
 
@@ -69,8 +49,9 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 			Created:      *d.Created,
 		}
 
-		//Device User
-		users, _, err := client.DeviceAPI.ListDeviceUsers(ctx, *d.Id).Execute()
+		// Device User
+		getDeviceUserCmd := client.DeviceAPI.ListDeviceUsers(ctx, *d.Id)
+		users, err := fetchDeviceUserssWithRetry(getDeviceUserCmd, sleep)
 		if err != nil {
 			errors = append(errors, err.Error())
 		} else {
@@ -91,4 +72,55 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 
 	return &resources, nil
 
+}
+
+func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) ([]okta.DeviceList, error) {
+	var allDevices []okta.DeviceList
+	var changePage bool
+	sleepExp := sleep
+	cursor := ""
+	hasNextPage := true
+	for hasNextPage {
+		devices, resp, err := cmd.After(cursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			changePage = false
+			sleepExp *= 2
+		} else {
+			changePage = true
+		}
+		if changePage {
+			sleepExp = sleep
+			parsedURL, _ := url.Parse(resp.NextPage())
+			cursor = parsedURL.Query().Get("after")
+			hasNextPage = resp.HasNextPage()
+			allDevices = append(allDevices, devices...)
+		}
+	}
+	return allDevices, nil
+}
+
+func fetchDeviceUserssWithRetry(cmd okta.ApiListDeviceUsersRequest, sleep time.Duration) ([]okta.DeviceUser, error) {
+	sleepExp := sleep
+	devices, _, err := cmd.Execute()
+	for err != nil {
+		devices, _, err = cmd.Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			sleepExp *= 2
+		}
+	}
+	return devices, nil
+}
+
+func retry(sleep time.Duration, err error) bool {
+	if err.Error() != "too many requests" {
+		return false
+	}
+	time.Sleep(sleep)
+	return true
 }

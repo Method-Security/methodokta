@@ -24,30 +24,10 @@ func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *
 	}
 
 	// Fetch all Applications
-	apps, resp, err := client.ApplicationAPI.ListApplications(ctx).Expand("").Execute()
+	getAppsCmd := client.ApplicationAPI.ListApplications(ctx).Expand("")
+	allApps, err := fetchListApplicationsWithRetry(getAppsCmd, sleep)
 	if err != nil {
-		errors = append(errors, err.Error())
-		time.Sleep(sleep)
-		apps, resp, err = client.ApplicationAPI.ListApplications(ctx).Expand("").Execute()
-		if err != nil {
-			return &methodokta.ApplicationReport{}, err
-		}
-	}
-	var allApps []okta.ListApplications200ResponseInner
-	allApps = append(allApps, apps...)
-	for resp.HasNextPage() {
-		parsedURL, _ := url.Parse(resp.NextPage())
-		cursor := parsedURL.Query().Get("after")
-		apps, resp, err = client.ApplicationAPI.ListApplications(ctx).After(cursor).Execute()
-		if err != nil {
-			errors = append(errors, err.Error())
-			time.Sleep(sleep)
-			apps, resp, err = client.ApplicationAPI.ListApplications(ctx).After(cursor).Execute()
-			if err != nil {
-				return &methodokta.ApplicationReport{}, err
-			}
-		}
-		allApps = append(allApps, apps...)
+		return &methodokta.ApplicationReport{}, err
 	}
 
 	// Loop through Applications
@@ -109,60 +89,38 @@ func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *
 			}
 
 			// Application groups
-			var allGroups []okta.ApplicationGroupAssignment
-			groups, resp, err := client.ApplicationGroupsAPI.ListApplicationGroupAssignments(ctx, uid).Execute()
+			getGroupsCmd := client.ApplicationGroupsAPI.ListApplicationGroupAssignments(ctx, uid)
+			allGroups, err := fetchListApplicationGroupAssignmentsWithRetry(getGroupsCmd, sleep)
 			if err != nil {
 				errors = append(errors, err.Error())
 			} else {
-				allGroups = append(allGroups, groups...)
-				for resp.HasNextPage() {
-					parsedURL, _ := url.Parse(resp.NextPage())
-					cursor := parsedURL.Query().Get("after")
-					groups, resp, err = client.ApplicationGroupsAPI.ListApplicationGroupAssignments(ctx, uid).After(cursor).Execute()
+				for _, g := range allGroups {
+					group, _, err := client.GroupAPI.GetGroup(ctx, *g.Id).Execute()
 					if err != nil {
 						errors = append(errors, err.Error())
 					} else {
-						allGroups = append(allGroups, groups...)
+						name := group.Profile.Name
+						group := methodokta.GroupInfo{Uid: *g.Id, Name: *name}
+						application.Groups = append(application.Groups, &group)
 					}
-				}
-			}
-			for _, g := range allGroups {
-				group, _, err := client.GroupAPI.GetGroup(ctx, *g.Id).Execute()
-				if err != nil {
-					errors = append(errors, err.Error())
-				} else {
-					name := group.Profile.Name
-					group := methodokta.GroupInfo{Uid: *g.Id, Name: *name}
-					application.Groups = append(application.Groups, &group)
 				}
 			}
 
 			// Application Users
-			var allUsers []okta.AppUser
-			users, resp, err := client.ApplicationUsersAPI.ListApplicationUsers(ctx, uid).Execute()
+			getUsersCmd := client.ApplicationUsersAPI.ListApplicationUsers(ctx, uid)
+			allUsers, err := fetchListApplicationUsersWithRetry(getUsersCmd, sleep)
 			if err != nil {
 				errors = append(errors, err.Error())
 			} else {
-				allUsers = append(allUsers, users...)
-				for resp.HasNextPage() {
-					parsedURL, _ := url.Parse(resp.NextPage())
-					cursor := parsedURL.Query().Get("after")
-					users, resp, err = client.ApplicationUsersAPI.ListApplicationUsers(ctx, uid).After(cursor).Execute()
+				for _, u := range allUsers {
+					user, _, err := client.UserAPI.GetUser(ctx, *u.Id).Execute()
 					if err != nil {
 						errors = append(errors, err.Error())
 					} else {
-						allUsers = append(allUsers, users...)
+						email := user.Profile.Email
+						user := methodokta.UserInfo{Uid: *u.Id, Email: *email}
+						application.Users = append(application.Users, &user)
 					}
-				}
-			}
-			for _, u := range allUsers {
-				user, _, err := client.UserAPI.GetUser(ctx, *u.Id).Execute()
-				if err != nil {
-					errors = append(errors, err.Error())
-				} else {
-					email := user.Profile.Email
-					user := methodokta.UserInfo{Uid: *u.Id, Email: *email}
-					application.Users = append(application.Users, &user)
 				}
 			}
 
@@ -177,4 +135,96 @@ func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *
 	}
 
 	return &resources, nil
+}
+
+func fetchListApplicationsWithRetry(cmd okta.ApiListApplicationsRequest, sleep time.Duration) ([]okta.ListApplications200ResponseInner, error) {
+	var allApps []okta.ListApplications200ResponseInner
+	var changePage bool
+	sleepExp := sleep
+	cursor := ""
+	hasNextPage := true
+	for hasNextPage {
+		apps, resp, err := cmd.After(cursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			changePage = false
+			sleepExp *= 2
+		} else {
+			changePage = true
+		}
+		if changePage {
+			sleepExp = sleep
+			parsedURL, _ := url.Parse(resp.NextPage())
+			cursor = parsedURL.Query().Get("after")
+			hasNextPage = resp.HasNextPage()
+			allApps = append(allApps, apps...)
+		}
+	}
+	return allApps, nil
+}
+
+func fetchListApplicationGroupAssignmentsWithRetry(cmd okta.ApiListApplicationGroupAssignmentsRequest, sleep time.Duration) ([]okta.ApplicationGroupAssignment, error) {
+	var allGroups []okta.ApplicationGroupAssignment
+	var changePage bool
+	sleepExp := sleep
+	cursor := ""
+	hasNextPage := true
+	for hasNextPage {
+		groups, resp, err := cmd.After(cursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			changePage = false
+			sleepExp *= 2
+		} else {
+			changePage = true
+		}
+		if changePage {
+			sleepExp = sleep
+			parsedURL, _ := url.Parse(resp.NextPage())
+			cursor = parsedURL.Query().Get("after")
+			hasNextPage = resp.HasNextPage()
+			allGroups = append(allGroups, groups...)
+		}
+	}
+	return allGroups, nil
+}
+
+func fetchListApplicationUsersWithRetry(cmd okta.ApiListApplicationUsersRequest, sleep time.Duration) ([]okta.AppUser, error) {
+	var allUsers []okta.AppUser
+	var changePage bool
+	sleepExp := sleep
+	cursor := ""
+	hasNextPage := true
+	for hasNextPage {
+		users, resp, err := cmd.After(cursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			changePage = false
+			sleepExp *= 2
+		} else {
+			changePage = true
+		}
+		if changePage {
+			sleepExp = sleep
+			parsedURL, _ := url.Parse(resp.NextPage())
+			cursor = parsedURL.Query().Get("after")
+			hasNextPage = resp.HasNextPage()
+			allUsers = append(allUsers, users...)
+		}
+	}
+	return allUsers, nil
+}
+
+func retry(sleep time.Duration, err error) bool {
+	if err.Error() != "too many requests" {
+		return false
+	}
+	time.Sleep(sleep)
+	return true
 }
