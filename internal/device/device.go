@@ -76,7 +76,6 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 
 func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) ([]okta.DeviceList, error) {
 	var allDevices []okta.DeviceList
-	var changePage bool
 	sleepExp := sleep
 	cursor := ""
 	hasNextPage := true
@@ -86,18 +85,14 @@ func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) 
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
-			changePage = false
 			sleepExp *= 2
-		} else {
-			changePage = true
+			continue
 		}
-		if changePage {
-			sleepExp = sleep
-			parsedURL, _ := url.Parse(resp.NextPage())
-			cursor = parsedURL.Query().Get("after")
-			hasNextPage = resp.HasNextPage()
-			allDevices = append(allDevices, devices...)
-		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allDevices = append(allDevices, devices...)
 	}
 	return allDevices, nil
 }

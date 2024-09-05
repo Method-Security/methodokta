@@ -92,7 +92,6 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 
 func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Duration) ([]okta.LogEvent, error) {
 	var allLogs []okta.LogEvent
-	var changePage bool
 	sleepExp := sleep
 	pastCursor := "-1"
 	currentCursor := ""
@@ -102,18 +101,14 @@ func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Dura
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
-			changePage = false
 			sleepExp *= 2
-		} else {
-			changePage = true
+			continue
 		}
-		if changePage {
-			sleepExp = sleep
-			pastCursor = currentCursor
-			parsedURL, _ := url.Parse(resp.NextPage())
-			currentCursor = parsedURL.Query().Get("after")
-			allLogs = append(allLogs, logs...)
-		}
+		sleepExp = sleep
+		pastCursor = currentCursor
+		parsedURL, _ := url.Parse(resp.NextPage())
+		currentCursor = parsedURL.Query().Get("after")
+		allLogs = append(allLogs, logs...)
 	}
 	return allLogs, nil
 }

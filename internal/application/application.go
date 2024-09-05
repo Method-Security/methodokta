@@ -139,7 +139,6 @@ func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *
 
 func fetchListApplicationsWithRetry(cmd okta.ApiListApplicationsRequest, sleep time.Duration) ([]okta.ListApplications200ResponseInner, error) {
 	var allApps []okta.ListApplications200ResponseInner
-	var changePage bool
 	sleepExp := sleep
 	cursor := ""
 	hasNextPage := true
@@ -149,25 +148,20 @@ func fetchListApplicationsWithRetry(cmd okta.ApiListApplicationsRequest, sleep t
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
-			changePage = false
 			sleepExp *= 2
-		} else {
-			changePage = true
+			continue
 		}
-		if changePage {
-			sleepExp = sleep
-			parsedURL, _ := url.Parse(resp.NextPage())
-			cursor = parsedURL.Query().Get("after")
-			hasNextPage = resp.HasNextPage()
-			allApps = append(allApps, apps...)
-		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allApps = append(allApps, apps...)
 	}
 	return allApps, nil
 }
 
 func fetchListApplicationGroupAssignmentsWithRetry(cmd okta.ApiListApplicationGroupAssignmentsRequest, sleep time.Duration) ([]okta.ApplicationGroupAssignment, error) {
 	var allGroups []okta.ApplicationGroupAssignment
-	var changePage bool
 	sleepExp := sleep
 	cursor := ""
 	hasNextPage := true
@@ -177,25 +171,20 @@ func fetchListApplicationGroupAssignmentsWithRetry(cmd okta.ApiListApplicationGr
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
-			changePage = false
 			sleepExp *= 2
-		} else {
-			changePage = true
+			continue
 		}
-		if changePage {
-			sleepExp = sleep
-			parsedURL, _ := url.Parse(resp.NextPage())
-			cursor = parsedURL.Query().Get("after")
-			hasNextPage = resp.HasNextPage()
-			allGroups = append(allGroups, groups...)
-		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allGroups = append(allGroups, groups...)
 	}
 	return allGroups, nil
 }
 
 func fetchListApplicationUsersWithRetry(cmd okta.ApiListApplicationUsersRequest, sleep time.Duration) ([]okta.AppUser, error) {
 	var allUsers []okta.AppUser
-	var changePage bool
 	sleepExp := sleep
 	cursor := ""
 	hasNextPage := true
@@ -205,18 +194,14 @@ func fetchListApplicationUsersWithRetry(cmd okta.ApiListApplicationUsersRequest,
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
-			changePage = false
 			sleepExp *= 2
-		} else {
-			changePage = true
+			continue
 		}
-		if changePage {
-			sleepExp = sleep
-			parsedURL, _ := url.Parse(resp.NextPage())
-			cursor = parsedURL.Query().Get("after")
-			hasNextPage = resp.HasNextPage()
-			allUsers = append(allUsers, users...)
-		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allUsers = append(allUsers, users...)
 	}
 	return allUsers, nil
 }

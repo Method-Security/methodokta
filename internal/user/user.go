@@ -136,7 +136,6 @@ func EnumerateUser(ctx context.Context, sleep time.Duration, oktaConfig *okta.Co
 
 func fetchUsersWithRetry(cmd okta.ApiListUsersRequest, sleep time.Duration) ([]okta.User, error) {
 	var allUsers []okta.User
-	var changePage bool
 	sleepExp := sleep
 	cursor := ""
 	hasNextPage := true
@@ -146,18 +145,15 @@ func fetchUsersWithRetry(cmd okta.ApiListUsersRequest, sleep time.Duration) ([]o
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
-			changePage = false
 			sleepExp *= 2
-		} else {
-			changePage = true
+			continue
+
 		}
-		if changePage {
-			sleepExp = sleep
-			parsedURL, _ := url.Parse(resp.NextPage())
-			cursor = parsedURL.Query().Get("after")
-			hasNextPage = resp.HasNextPage()
-			allUsers = append(allUsers, users...)
-		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allUsers = append(allUsers, users...)
 	}
 	return allUsers, nil
 }
@@ -179,7 +175,6 @@ func fetchListAppLinksWithRetry(cmd okta.ApiListAppLinksRequest, sleep time.Dura
 
 func fetchListUserGroupsWithRetry(cmd okta.ApiListUserGroupsRequest, sleep time.Duration) ([]okta.Group, error) {
 	var allGroups []okta.Group
-	var changePage bool
 	sleepExp := sleep
 	cursor := ""
 	hasNextPage := true
@@ -189,18 +184,15 @@ func fetchListUserGroupsWithRetry(cmd okta.ApiListUserGroupsRequest, sleep time.
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
-			changePage = false
 			sleepExp *= 2
-		} else {
-			changePage = true
+			continue
 		}
-		if changePage {
-			sleepExp = sleep
-			parsedURL, _ := url.Parse(resp.NextPage())
-			cursor = parsedURL.Query().Get("after")
-			hasNextPage = resp.HasNextPage()
-			allGroups = append(allGroups, groups...)
-		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allGroups = append(allGroups, groups...)
+
 	}
 	return allGroups, nil
 }
