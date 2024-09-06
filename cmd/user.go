@@ -64,9 +64,9 @@ func (a *MethodOkta) InitUserCommand() {
 		},
 	}
 
-	loginCmd.Flags().String("user", "", "List the User Account UID to gather Login data for (Defaults to all).")
-	loginCmd.Flags().String("application", "", "List the Application UID to gather Login data for (Defaults to all).")
-	loginCmd.Flags().Int("days", 90, "Number representing how many days to look back in the logs (Defaults to 90).")
+	loginCmd.Flags().String("user", "", "The User Account UID to gather Login data for (Defaults to all users).")
+	loginCmd.Flags().String("application", "", "The Application UID to gather Login data for (Defaults to all applications).")
+	loginCmd.Flags().Int("days", 90, "Number representing how many days to look back in the logs")
 
 	userCmd.AddCommand(enumerateCmd)
 	userCmd.AddCommand(loginCmd)

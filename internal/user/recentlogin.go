@@ -37,6 +37,7 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	}
 
 	// Loop through Logs to find recent login
+	var numLoginMap = make(map[string]int)
 	var recentLoginMap = make(map[string]time.Time)
 	for _, l := range allLogs {
 		data, _ := l.MarshalJSON()
@@ -64,10 +65,12 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 		key := userUID + "|" + userEmail + "|" + applicationUID + "|" + applicationName
 		if val, exists := recentLoginMap[key]; !exists {
 			recentLoginMap[key] = date
+			numLoginMap[key] = 1
 		} else {
 			if val.Before(date) {
 				recentLoginMap[key] = date
 			}
+			numLoginMap[key]++
 		}
 	}
 	var loginList []*methodokta.Login
@@ -77,7 +80,9 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 		login := methodokta.Login{
 			User:        &methodokta.UserInfo{Uid: userUID, Email: userEmail},
 			Application: &methodokta.ApplicationInfo{Uid: applicationUID, Name: applicationName},
-			Date:        date,
+			Count:       numLoginMap[key],
+			TimeFrame:   days,
+			Last:        date,
 		}
 		loginList = append(loginList, &login)
 	}

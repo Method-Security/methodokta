@@ -5,7 +5,9 @@ types:
     properties:
       user: common.UserInfo
       application: common.ApplicationInfo
-      date: datetime
+      count: integer
+      timeFrame: integer
+      last: datetime
   LoginReport:
     properties:
       org: string

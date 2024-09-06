@@ -642,7 +642,9 @@ func (g GroupType) Ptr() *GroupType {
 type Login struct {
 	User        *UserInfo        `json:"user,omitempty" url:"user,omitempty"`
 	Application *ApplicationInfo `json:"application,omitempty" url:"application,omitempty"`
-	Date        time.Time        `json:"date" url:"date"`
+	Count       int              `json:"count" url:"count"`
+	TimeFrame   int              `json:"timeFrame" url:"timeFrame"`
+	Last        time.Time        `json:"last" url:"last"`
 
 	extraProperties map[string]interface{}
 	_rawJSON        json.RawMessage
@@ -656,7 +658,7 @@ func (l *Login) UnmarshalJSON(data []byte) error {
 	type embed Login
 	var unmarshaler = struct {
 		embed
-		Date *core.DateTime `json:"date"`
+		Last *core.DateTime `json:"last"`
 	}{
 		embed: embed(*l),
 	}
@@ -664,7 +666,7 @@ func (l *Login) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*l = Login(unmarshaler.embed)
-	l.Date = unmarshaler.Date.Time()
+	l.Last = unmarshaler.Last.Time()
 
 	extraProperties, err := core.ExtractExtraProperties(data, *l)
 	if err != nil {
@@ -680,10 +682,10 @@ func (l *Login) MarshalJSON() ([]byte, error) {
 	type embed Login
 	var marshaler = struct {
 		embed
-		Date *core.DateTime `json:"date"`
+		Last *core.DateTime `json:"last"`
 	}{
 		embed: embed(*l),
-		Date:  core.NewDateTime(l.Date),
+		Last:  core.NewDateTime(l.Last),
 	}
 	return json.Marshal(marshaler)
 }
