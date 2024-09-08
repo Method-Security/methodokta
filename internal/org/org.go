@@ -3,12 +3,13 @@ package org
 import (
 	"context"
 	"fmt"
+	"time"
 
 	methodokta "github.com/method-security/methodokta/generated/go"
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateOrg(ctx context.Context, oktaConfig *okta.Configuration) (*methodokta.OrgReport, error) {
+func EnumerateOrg(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.OrgReport, error) {
 	resources := methodokta.OrgReport{}
 	errors := []string{}
 
@@ -17,7 +18,12 @@ func EnumerateOrg(ctx context.Context, oktaConfig *okta.Configuration) (*methodo
 	// Org UID
 	org, _, err := client.OrgSettingAPI.GetOrgSettings(context.Background()).Execute()
 	if err != nil {
-		return &methodokta.OrgReport{}, err
+		errors = append(errors, err.Error())
+		time.Sleep(sleep)
+		org, _, err = client.OrgSettingAPI.GetOrgSettings(context.Background()).Execute()
+		if err != nil {
+			return &methodokta.OrgReport{}, err
+		}
 	}
 
 	// Org data

@@ -1,0 +1,15 @@
+imports:
+  common: ./common.yml
+types:
+  Login:
+    properties:
+      user: common.UserInfo
+      application: common.ApplicationInfo
+      count: integer
+      timeFrame: integer
+      last: datetime
+  LoginReport:
+    properties:
+      org: string
+      logins: optional<list<Login>>
+      errors: optional<list<string>>

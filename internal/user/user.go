@@ -11,33 +11,23 @@ import (
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*methodokta.UserReport, error) {
+func EnumerateUser(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.UserReport, error) {
 	resources := methodokta.UserReport{}
 	errors := []string{}
 
 	client := okta.NewAPIClient(oktaConfig)
 
 	// Org UID
-	org, _, err := client.OrgSettingAPI.GetOrgSettings(context.Background()).Execute()
+	org, _, err := client.OrgSettingAPI.GetOrgSettings(ctx).Execute()
 	if err != nil {
 		return &methodokta.UserReport{}, err
 	}
 
-	// Fetch all users
-	var allUsers []okta.User
-	users, resp, err := client.UserAPI.ListUsers(ctx).Execute()
+	// Fetch all Users
+	getUserscmd := client.UserAPI.ListUsers(ctx)
+	allUsers, err := fetchUsersWithRetry(getUserscmd, sleep)
 	if err != nil {
 		return &methodokta.UserReport{}, err
-	}
-	allUsers = append(allUsers, users...)
-	for resp.HasNextPage() {
-		parsedURL, _ := url.Parse(resp.NextPage())
-		cursor := parsedURL.Query().Get("after")
-		users, resp, err = client.UserAPI.ListUsers(ctx).After(cursor).Execute()
-		if err != nil {
-			return &methodokta.UserReport{}, err
-		}
-		allUsers = append(allUsers, users...)
 	}
 
 	// Loop through Users
@@ -73,11 +63,12 @@ func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*method
 		}
 
 		// User applications
-		appLinks, _, err := client.UserAPI.ListAppLinks(ctx, *u.Id).Execute()
+		getAppsCmd := client.UserAPI.ListAppLinks(ctx, *u.Id)
+		allAppLinks, err := fetchListAppLinksWithRetry(getAppsCmd, sleep)
 		if err != nil {
 			errors = append(errors, err.Error())
 		} else {
-			for _, a := range appLinks {
+			for _, a := range allAppLinks {
 				data, _ := a.MarshalJSON()
 				var result map[string]interface{}
 				err = json.Unmarshal(data, &result)
@@ -96,30 +87,20 @@ func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*method
 		}
 
 		// User groups
-		var allGroups []okta.Group
-		groups, resp, err := client.UserAPI.ListUserGroups(ctx, *u.Id).Execute()
+		getGroupsCmd := client.UserAPI.ListUserGroups(ctx, *u.Id)
+		allGroups, err := fetchListUserGroupsWithRetry(getGroupsCmd, sleep)
 		if err != nil {
 			errors = append(errors, err.Error())
 		} else {
-			allGroups = append(allGroups, groups...)
-			for resp.HasNextPage() {
-				parsedURL, _ := url.Parse(resp.NextPage())
-				cursor := parsedURL.Query().Get("after")
-				groups, resp, err = client.UserAPI.ListUserGroups(ctx, *u.Id).After(cursor).Execute()
-				if err != nil {
-					errors = append(errors, err.Error())
-				} else {
-					allGroups = append(allGroups, groups...)
-				}
+			for _, g := range allGroups {
+				group := methodokta.GroupInfo{Uid: *g.Id, Name: *g.Profile.Name}
+				user.Groups = append(user.Groups, &group)
 			}
-		}
-		for _, g := range allGroups {
-			group := methodokta.GroupInfo{Uid: *g.Id, Name: *g.Profile.Name}
-			user.Groups = append(user.Groups, &group)
 		}
 
 		// User roles
-		roles, _, err := client.RoleAssignmentAPI.ListAssignedRolesForUser(ctx, *u.Id).Execute()
+		getRolesCmd := client.RoleAssignmentAPI.ListAssignedRolesForUser(ctx, *u.Id)
+		roles, err := fetchListAssignedRolesForUserWithRetry(getRolesCmd, sleep)
 		if err != nil {
 			errors = append(errors, err.Error())
 		} else {
@@ -151,4 +132,82 @@ func EnumerateUser(ctx context.Context, oktaConfig *okta.Configuration) (*method
 		Errors: errors,
 	}
 	return &resources, nil
+}
+
+func fetchUsersWithRetry(cmd okta.ApiListUsersRequest, sleep time.Duration) ([]okta.User, error) {
+	var allUsers []okta.User
+	sleepExp := sleep
+	cursor := ""
+	hasNextPage := true
+	for hasNextPage {
+		users, resp, err := cmd.After(cursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			sleepExp *= 2
+			continue
+
+		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allUsers = append(allUsers, users...)
+	}
+	return allUsers, nil
+}
+
+func fetchListAppLinksWithRetry(cmd okta.ApiListAppLinksRequest, sleep time.Duration) ([]okta.AppLink, error) {
+	sleepExp := sleep
+	apps, _, err := cmd.Execute()
+	for err != nil {
+		apps, _, err = cmd.Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			sleepExp *= 2
+		}
+	}
+	return apps, nil
+}
+
+func fetchListUserGroupsWithRetry(cmd okta.ApiListUserGroupsRequest, sleep time.Duration) ([]okta.Group, error) {
+	var allGroups []okta.Group
+	sleepExp := sleep
+	cursor := ""
+	hasNextPage := true
+	for hasNextPage {
+		groups, resp, err := cmd.After(cursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			sleepExp *= 2
+			continue
+		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allGroups = append(allGroups, groups...)
+
+	}
+	return allGroups, nil
+}
+
+func fetchListAssignedRolesForUserWithRetry(cmd okta.ApiListAssignedRolesForUserRequest, sleep time.Duration) ([]okta.Role, error) {
+	sleepExp := sleep
+	roles, _, err := cmd.Execute()
+	for err != nil {
+		roles, _, err = cmd.Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			sleepExp *= 2
+		}
+	}
+	return roles, nil
 }

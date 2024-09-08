@@ -17,7 +17,7 @@ func (a *MethodOkta) InitDeviceCommand() {
 		Short: "Enumerate Devices",
 		Long:  `Enumerate Devices`,
 		Run: func(cmd *cobra.Command, args []string) {
-			report, err := device.EnumerateDevice(cmd.Context(), a.OktaConfig)
+			report, err := device.EnumerateDevice(cmd.Context(), a.RequestSleep, a.OktaConfig)
 			if err != nil {
 				errorMessage := err.Error()
 				a.OutputSignal.ErrorMessage = &errorMessage

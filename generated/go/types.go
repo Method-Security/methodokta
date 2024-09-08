@@ -639,6 +639,112 @@ func (g GroupType) Ptr() *GroupType {
 	return &g
 }
 
+type Login struct {
+	User        *UserInfo        `json:"user,omitempty" url:"user,omitempty"`
+	Application *ApplicationInfo `json:"application,omitempty" url:"application,omitempty"`
+	Count       int              `json:"count" url:"count"`
+	TimeFrame   int              `json:"timeFrame" url:"timeFrame"`
+	Last        time.Time        `json:"last" url:"last"`
+
+	extraProperties map[string]interface{}
+	_rawJSON        json.RawMessage
+}
+
+func (l *Login) GetExtraProperties() map[string]interface{} {
+	return l.extraProperties
+}
+
+func (l *Login) UnmarshalJSON(data []byte) error {
+	type embed Login
+	var unmarshaler = struct {
+		embed
+		Last *core.DateTime `json:"last"`
+	}{
+		embed: embed(*l),
+	}
+	if err := json.Unmarshal(data, &unmarshaler); err != nil {
+		return err
+	}
+	*l = Login(unmarshaler.embed)
+	l.Last = unmarshaler.Last.Time()
+
+	extraProperties, err := core.ExtractExtraProperties(data, *l)
+	if err != nil {
+		return err
+	}
+	l.extraProperties = extraProperties
+
+	l._rawJSON = json.RawMessage(data)
+	return nil
+}
+
+func (l *Login) MarshalJSON() ([]byte, error) {
+	type embed Login
+	var marshaler = struct {
+		embed
+		Last *core.DateTime `json:"last"`
+	}{
+		embed: embed(*l),
+		Last:  core.NewDateTime(l.Last),
+	}
+	return json.Marshal(marshaler)
+}
+
+func (l *Login) String() string {
+	if len(l._rawJSON) > 0 {
+		if value, err := core.StringifyJSON(l._rawJSON); err == nil {
+			return value
+		}
+	}
+	if value, err := core.StringifyJSON(l); err == nil {
+		return value
+	}
+	return fmt.Sprintf("%#v", l)
+}
+
+type LoginReport struct {
+	Org    string   `json:"org" url:"org"`
+	Logins []*Login `json:"logins,omitempty" url:"logins,omitempty"`
+	Errors []string `json:"errors,omitempty" url:"errors,omitempty"`
+
+	extraProperties map[string]interface{}
+	_rawJSON        json.RawMessage
+}
+
+func (l *LoginReport) GetExtraProperties() map[string]interface{} {
+	return l.extraProperties
+}
+
+func (l *LoginReport) UnmarshalJSON(data []byte) error {
+	type unmarshaler LoginReport
+	var value unmarshaler
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*l = LoginReport(value)
+
+	extraProperties, err := core.ExtractExtraProperties(data, *l)
+	if err != nil {
+		return err
+	}
+	l.extraProperties = extraProperties
+
+	l._rawJSON = json.RawMessage(data)
+	return nil
+}
+
+func (l *LoginReport) String() string {
+	if len(l._rawJSON) > 0 {
+		if value, err := core.StringifyJSON(l._rawJSON); err == nil {
+			return value
+		}
+	}
+	if value, err := core.StringifyJSON(l); err == nil {
+		return value
+	}
+	return fmt.Sprintf("%#v", l)
+}
+
 type OrgInfo struct {
 	Uid         string     `json:"uid" url:"uid"`
 	CompanyName *string    `json:"companyName,omitempty" url:"companyName,omitempty"`

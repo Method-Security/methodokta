@@ -3,42 +3,32 @@ package device
 import (
 	"context"
 	"net/url"
+	"time"
 
 	methodokta "github.com/method-security/methodokta/generated/go"
 	"github.com/okta/okta-sdk-golang/v5/okta"
 )
 
-func EnumerateDevice(ctx context.Context, oktaConfig *okta.Configuration) (*methodokta.DeviceReport, error) {
+func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.DeviceReport, error) {
 	resources := methodokta.DeviceReport{}
 	errors := []string{}
 
 	client := okta.NewAPIClient(oktaConfig)
 
 	// Org UID
-	org, _, err := client.OrgSettingAPI.GetOrgSettings(context.Background()).Execute()
+	org, _, err := client.OrgSettingAPI.GetOrgSettings(ctx).Execute()
 	if err != nil {
 		return &methodokta.DeviceReport{}, err
 	}
 
 	// Fetch all Devices
-	devices, resp, err := client.DeviceAPI.ListDevices(ctx).Expand("").Execute()
+	getDevicescmd := client.DeviceAPI.ListDevices(ctx).Expand("")
+	allDevices, err := fetchDevicesWithRetry(getDevicescmd, sleep)
 	if err != nil {
 		return &methodokta.DeviceReport{}, err
 	}
-	var allDevices []okta.DeviceList
-	allDevices = append(allDevices, devices...)
-	for resp.HasNextPage() {
-		parsedURL, _ := url.Parse(resp.NextPage())
-		cursor := parsedURL.Query().Get("after")
-		devices, resp, err = client.DeviceAPI.ListDevices(ctx).After(cursor).Execute()
-		if err != nil {
-			return &methodokta.DeviceReport{}, err
-		}
-		allDevices = append(allDevices, devices...)
 
-	}
-
-	// Loop through Applications
+	// Loop through Devices
 	var deviceList []*methodokta.Device
 	for _, d := range allDevices {
 
@@ -59,8 +49,9 @@ func EnumerateDevice(ctx context.Context, oktaConfig *okta.Configuration) (*meth
 			Created:      *d.Created,
 		}
 
-		//Device User
-		users, _, err := client.DeviceAPI.ListDeviceUsers(ctx, *d.Id).Execute()
+		// Device User
+		getDeviceUserCmd := client.DeviceAPI.ListDeviceUsers(ctx, *d.Id)
+		users, err := fetchDeviceUserssWithRetry(getDeviceUserCmd, sleep)
 		if err != nil {
 			errors = append(errors, err.Error())
 		} else {
@@ -81,4 +72,50 @@ func EnumerateDevice(ctx context.Context, oktaConfig *okta.Configuration) (*meth
 
 	return &resources, nil
 
+}
+
+func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) ([]okta.DeviceList, error) {
+	var allDevices []okta.DeviceList
+	sleepExp := sleep
+	cursor := ""
+	hasNextPage := true
+	for hasNextPage {
+		devices, resp, err := cmd.After(cursor).Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			sleepExp *= 2
+			continue
+		}
+		sleepExp = sleep
+		parsedURL, _ := url.Parse(resp.NextPage())
+		cursor = parsedURL.Query().Get("after")
+		hasNextPage = resp.HasNextPage()
+		allDevices = append(allDevices, devices...)
+	}
+	return allDevices, nil
+}
+
+func fetchDeviceUserssWithRetry(cmd okta.ApiListDeviceUsersRequest, sleep time.Duration) ([]okta.DeviceUser, error) {
+	sleepExp := sleep
+	devices, _, err := cmd.Execute()
+	for err != nil {
+		devices, _, err = cmd.Execute()
+		if err != nil {
+			if !retry(sleepExp, err) {
+				return nil, err
+			}
+			sleepExp *= 2
+		}
+	}
+	return devices, nil
+}
+
+func retry(sleep time.Duration, err error) bool {
+	if err.Error() != "too many requests" {
+		return false
+	}
+	time.Sleep(sleep)
+	return true
 }
