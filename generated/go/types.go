@@ -645,6 +645,7 @@ type Login struct {
 	Count       int              `json:"count" url:"count"`
 	TimeFrame   int              `json:"timeFrame" url:"timeFrame"`
 	Last        time.Time        `json:"last" url:"last"`
+	ScanDate    time.Time        `json:"scanDate" url:"scanDate"`
 
 	extraProperties map[string]interface{}
 	_rawJSON        json.RawMessage
@@ -658,7 +659,8 @@ func (l *Login) UnmarshalJSON(data []byte) error {
 	type embed Login
 	var unmarshaler = struct {
 		embed
-		Last *core.DateTime `json:"last"`
+		Last     *core.DateTime `json:"last"`
+		ScanDate *core.DateTime `json:"scanDate"`
 	}{
 		embed: embed(*l),
 	}
@@ -667,6 +669,7 @@ func (l *Login) UnmarshalJSON(data []byte) error {
 	}
 	*l = Login(unmarshaler.embed)
 	l.Last = unmarshaler.Last.Time()
+	l.ScanDate = unmarshaler.ScanDate.Time()
 
 	extraProperties, err := core.ExtractExtraProperties(data, *l)
 	if err != nil {
@@ -682,10 +685,12 @@ func (l *Login) MarshalJSON() ([]byte, error) {
 	type embed Login
 	var marshaler = struct {
 		embed
-		Last *core.DateTime `json:"last"`
+		Last     *core.DateTime `json:"last"`
+		ScanDate *core.DateTime `json:"scanDate"`
 	}{
-		embed: embed(*l),
-		Last:  core.NewDateTime(l.Last),
+		embed:    embed(*l),
+		Last:     core.NewDateTime(l.Last),
+		ScanDate: core.NewDateTime(l.ScanDate),
 	}
 	return json.Marshal(marshaler)
 }

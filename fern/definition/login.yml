@@ -8,6 +8,7 @@ types:
       count: integer
       timeFrame: integer
       last: datetime
+      scanDate: datetime
   LoginReport:
     properties:
       org: string

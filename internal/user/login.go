@@ -83,6 +83,7 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 			Count:       numLoginMap[key],
 			TimeFrame:   days,
 			Last:        date,
+			ScanDate:    time.Now().UTC(),
 		}
 		loginList = append(loginList, &login)
 	}
