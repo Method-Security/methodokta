@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -104,6 +105,7 @@ func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Dura
 	for pastCursor != currentCursor {
 		logs, resp, err := cmd.After(currentCursor).Execute()
 		if err != nil {
+			log.Printf("LOGINS: fetchLoginEvents sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -115,6 +117,7 @@ func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Dura
 		parsedURL, _ := url.Parse(resp.NextPage())
 		currentCursor = parsedURL.Query().Get("after")
 		allLogs = append(allLogs, logs...)
+		log.Printf("LOGINS: fetchLoginEvents count - %v", len(allLogs))
 	}
 	return allLogs, nil
 }

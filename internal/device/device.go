@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"log"
 	"net/url"
 	"time"
 
@@ -51,7 +52,7 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 
 		// Device User
 		getDeviceUserCmd := client.DeviceAPI.ListDeviceUsers(ctx, *d.Id)
-		users, err := fetchDeviceUserssWithRetry(getDeviceUserCmd, sleep)
+		users, err := fetchDeviceUsersWithRetry(getDeviceUserCmd, sleep)
 		if err != nil {
 			errors = append(errors, err.Error())
 		} else {
@@ -82,6 +83,7 @@ func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) 
 	for hasNextPage {
 		devices, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Printf("DEVICES: fetchDevices sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -93,22 +95,25 @@ func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) 
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
 		allDevices = append(allDevices, devices...)
+		log.Printf("DEVICES: fetchDevices count - %v", len(allDevices))
 	}
 	return allDevices, nil
 }
 
-func fetchDeviceUserssWithRetry(cmd okta.ApiListDeviceUsersRequest, sleep time.Duration) ([]okta.DeviceUser, error) {
+func fetchDeviceUsersWithRetry(cmd okta.ApiListDeviceUsersRequest, sleep time.Duration) ([]okta.DeviceUser, error) {
 	sleepExp := sleep
 	devices, _, err := cmd.Execute()
 	for err != nil {
 		devices, _, err = cmd.Execute()
 		if err != nil {
+			log.Printf("USERS: fetchDeviceUsers sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
 			sleepExp *= 2
 		}
 	}
+	log.Printf("USERS: fetchDeviceUsers count - %v", len(devices))
 	return devices, nil
 }
 

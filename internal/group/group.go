@@ -3,6 +3,7 @@ package group
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/url"
 	"time"
 
@@ -23,8 +24,8 @@ func EnumerateGroup(ctx context.Context, sleep time.Duration, oktaConfig *okta.C
 	}
 
 	// Fetch all Groups
-	getUsersCmd := client.GroupAPI.ListGroups(ctx)
-	allGroups, err := fetchListGroupsWithRetry(getUsersCmd, sleep)
+	getGroupsCmd := client.GroupAPI.ListGroups(ctx)
+	allGroups, err := fetchListGroupsWithRetry(getGroupsCmd, sleep)
 	if err != nil {
 		return &methodokta.GroupReport{}, err
 	}
@@ -111,6 +112,7 @@ func fetchListGroupsWithRetry(cmd okta.ApiListGroupsRequest, sleep time.Duration
 	for hasNextPage {
 		groups, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Printf("GROUPS: fetchListGroups sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -122,6 +124,7 @@ func fetchListGroupsWithRetry(cmd okta.ApiListGroupsRequest, sleep time.Duration
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
 		allGroups = append(allGroups, groups...)
+		log.Printf("GROUPS: fetchListGroups count - %v", len(allGroups))
 	}
 	return allGroups, nil
 }
@@ -135,6 +138,7 @@ func fetchListAssignedApplicationsForGroupWithRetry(cmd okta.ApiListAssignedAppl
 	for hasNextPage {
 		users, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Printf("APPS: fetchListAssignedApplicationsForGroup sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -149,6 +153,7 @@ func fetchListAssignedApplicationsForGroupWithRetry(cmd okta.ApiListAssignedAppl
 			cursor = parsedURL.Query().Get("after")
 			hasNextPage = resp.HasNextPage()
 			allApps = append(allApps, users...)
+			log.Printf("APPS: fetchListAssignedApplicationsForGroup count - %v", len(allApps))
 		}
 	}
 	return allApps, nil
@@ -160,12 +165,14 @@ func fetchListGroupAssignedRolesWithRetry(cmd okta.ApiListGroupAssignedRolesRequ
 	for err != nil {
 		roles, _, err = cmd.Execute()
 		if err != nil {
+			log.Printf("ROLES: fetchListGroupAssignedRoles sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
 			sleepExp *= 2
 		}
 	}
+	log.Printf("ROLES: fetchListGroupAssignedRoles count - %v", len(roles))
 	return roles, nil
 }
 
@@ -178,6 +185,7 @@ func fetchListGroupUsersWithRetry(cmd okta.ApiListGroupUsersRequest, sleep time.
 	for hasNextPage {
 		users, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Printf("USERS: fetchListGroupUsers sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -192,6 +200,7 @@ func fetchListGroupUsersWithRetry(cmd okta.ApiListGroupUsersRequest, sleep time.
 			cursor = parsedURL.Query().Get("after")
 			hasNextPage = resp.HasNextPage()
 			allUsers = append(allUsers, users...)
+			log.Printf("USERS: fetchListGroupUsers count - %v", len(allUsers))
 		}
 	}
 	return allUsers, nil

@@ -3,11 +3,12 @@
 package client
 
 import (
-	option "github.com/method-security/methodokta/generated/go/option"
-	assert "github.com/stretchr/testify/assert"
 	http "net/http"
 	testing "testing"
 	time "time"
+
+	option "github.com/method-security/methodokta/generated/go/option"
+	assert "github.com/stretchr/testify/assert"
 )
 
 func TestNewClient(t *testing.T) {

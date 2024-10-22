@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"time"
 
@@ -33,7 +34,6 @@ func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *
 	// Loop through Applications
 	var appList []*methodokta.Application
 	for _, a := range allApps {
-
 		// Application data
 		data, _ := a.MarshalJSON()
 		var result map[string]interface{}
@@ -145,6 +145,7 @@ func fetchListApplicationsWithRetry(cmd okta.ApiListApplicationsRequest, sleep t
 	for hasNextPage {
 		apps, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Printf("APPS: fetchListApplications sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -156,6 +157,7 @@ func fetchListApplicationsWithRetry(cmd okta.ApiListApplicationsRequest, sleep t
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
 		allApps = append(allApps, apps...)
+		log.Printf("APPS: fetchListApplications count - %v", len(allApps))
 	}
 	return allApps, nil
 }
@@ -168,6 +170,7 @@ func fetchListApplicationGroupAssignmentsWithRetry(cmd okta.ApiListApplicationGr
 	for hasNextPage {
 		groups, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Printf("GROUPS: fetchListApplicationGroupAssignments sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -179,6 +182,7 @@ func fetchListApplicationGroupAssignmentsWithRetry(cmd okta.ApiListApplicationGr
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
 		allGroups = append(allGroups, groups...)
+		log.Printf("GROUPS: fetchListApplicationGroupAssignments count - %v", len(allGroups))
 	}
 	return allGroups, nil
 }
@@ -191,6 +195,7 @@ func fetchListApplicationUsersWithRetry(cmd okta.ApiListApplicationUsersRequest,
 	for hasNextPage {
 		users, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Printf("USERS: listApplicationUsers sleep - %v", sleepExp)
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -202,6 +207,7 @@ func fetchListApplicationUsersWithRetry(cmd okta.ApiListApplicationUsersRequest,
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
 		allUsers = append(allUsers, users...)
+		log.Printf("USERS: listApplicationUsers count - %v", len(allUsers))
 	}
 	return allUsers, nil
 }
