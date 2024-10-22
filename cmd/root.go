@@ -18,10 +18,10 @@ import (
 type MethodOkta struct {
 	version      string
 	RootFlags    config.RootFlags
-	OutputConfig writer.OutputConfig
-	OutputSignal signal.Signal
 	OktaConfig   *okta.Configuration
 	RequestSleep time.Duration
+	OutputConfig writer.OutputConfig
+	OutputSignal signal.Signal
 	RootCmd      *cobra.Command
 }
 
@@ -29,14 +29,15 @@ func NewMethodOkta(version string) *MethodOkta {
 	methodOkta := MethodOkta{
 		version: version,
 		RootFlags: config.RootFlags{
-			Quiet:        false,
-			Verbose:      false,
-			RequestSleep: 0,
-			OktaData: config.OktaData{
+			Quiet:   false,
+			Verbose: false,
+			Limit:   0,
+			OktaAuth: config.OktaAuth{
 				Domain:   "",
 				APIToken: "",
 			},
 		},
+		RequestSleep: 10 * time.Second,
 		OutputConfig: writer.NewOutputConfig(nil, writer.NewFormat(writer.SIGNAL)),
 		OutputSignal: signal.NewSignal(nil, datetime.DateTime(time.Now()), nil, 0, nil),
 	}
@@ -66,9 +67,6 @@ func (a *MethodOkta) InitRootCommand() {
 			}
 			a.OutputConfig = writer.NewOutputConfig(outputFilePointer, format)
 			cmd.SetContext(svc1log.WithLogger(cmd.Context(), config.InitializeLogging(cmd, &a.RootFlags)))
-
-			// Rate Limit wait Parameter
-			a.RequestSleep = 10 * time.Second
 
 			// Okta Configuration
 			config, err := getOktaConfig(a)
@@ -101,8 +99,9 @@ func (a *MethodOkta) InitRootCommand() {
 	a.RootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "signal", "Output format (signal, json, yaml). Default value is signal")
 
 	//OktaConfig Flags
-	a.RootCmd.PersistentFlags().StringVarP(&a.RootFlags.OktaData.Domain, "domain", "d", "", "Okta Domain (ie. https://myokta.okta.com)")
-	a.RootCmd.PersistentFlags().StringVarP(&a.RootFlags.OktaData.APIToken, "apitoken", "a", "", "Okta API Token")
+	a.RootCmd.PersistentFlags().StringVarP(&a.RootFlags.OktaAuth.APIToken, "apitoken", "a", "", "Okta API Token")
+	a.RootCmd.PersistentFlags().StringVarP(&a.RootFlags.OktaAuth.Domain, "domain", "d", "", "Okta Domain (ie. https://myokta.okta.com)")
+	a.RootCmd.PersistentFlags().IntVarP(&a.RootFlags.Limit, "limit", "l", 0, "Upper Bound for returned objects")
 
 	versionCmd := &cobra.Command{
 		Use:   "version",
@@ -140,8 +139,8 @@ func validateOutputFormat(output string) (writer.Format, error) {
 func getOktaConfig(a *MethodOkta) (*okta.Configuration, error) {
 	// Get Domain
 	domain := ""
-	if a.RootFlags.OktaData.Domain != "" {
-		domain = a.RootFlags.OktaData.Domain
+	if a.RootFlags.OktaAuth.Domain != "" {
+		domain = a.RootFlags.OktaAuth.Domain
 	} else if len(os.Getenv("OKTA_DOMAIN")) != 0 {
 		domain = os.Getenv("OKTA_DOMAIN")
 	} else {
@@ -151,8 +150,8 @@ func getOktaConfig(a *MethodOkta) (*okta.Configuration, error) {
 
 	//Get API Token
 	apiToken := ""
-	if a.RootFlags.OktaData.APIToken != "" {
-		apiToken = a.RootFlags.OktaData.APIToken
+	if a.RootFlags.OktaAuth.APIToken != "" {
+		apiToken = a.RootFlags.OktaAuth.APIToken
 	} else if len(os.Getenv("OKTA_API_TOKEN")) != 0 {
 		apiToken = os.Getenv("OKTA_API_TOKEN")
 	} else {

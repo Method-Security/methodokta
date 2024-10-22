@@ -1,17 +1,13 @@
 package config
 
-import (
-	"time"
-)
-
-type OktaData struct {
-	Domain   string
+type OktaAuth struct {
 	APIToken string
+	Domain   string
 }
 
 type RootFlags struct {
-	Quiet        bool
-	Verbose      bool
-	RequestSleep time.Duration
-	OktaData     OktaData
+	Quiet    bool
+	Verbose  bool
+	Limit    int
+	OktaAuth OktaAuth
 }

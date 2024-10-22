@@ -17,11 +17,9 @@ func (a *MethodOkta) InitApplicationCommand() {
 		Short: "Enumerate Applications",
 		Long:  `Enumerate Applications`,
 		Run: func(cmd *cobra.Command, args []string) {
-			report, err := application.EnumerateApplication(cmd.Context(), a.RequestSleep, a.OktaConfig)
+			report, err := application.EnumerateApplication(cmd.Context(), a.RootFlags.Limit, a.RequestSleep, a.OktaConfig)
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 			}
 			a.OutputSignal.Content = report
 		},

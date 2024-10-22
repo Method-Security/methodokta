@@ -12,7 +12,7 @@ import (
 	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
-func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string, days int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.LoginReport, error) {
+func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string, days int, logLimit int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.LoginReport, error) {
 	log := svc1log.FromContext(ctx)
 
 	resources := methodokta.LoginReport{}
@@ -35,7 +35,7 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	// Fetch System Logs for Application SSO Logins
 	log.Info("Total Login Events")
 	loginEventCmd := client.SystemLogAPI.ListLogEvents(ctx).Q(query).Filter(filter).Since(since).Limit(limit)
-	allLogs, err := fetchLoginEventsWithRetry(ctx, loginEventCmd, sleep)
+	allLogs, err := fetchLoginEventsWithRetry(ctx, loginEventCmd, logLimit, sleep)
 	if err != nil {
 		return &methodokta.LoginReport{}, err
 	}
@@ -100,7 +100,7 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	return &resources, nil
 }
 
-func fetchLoginEventsWithRetry(ctx context.Context, cmd okta.ApiListLogEventsRequest, sleep time.Duration) ([]okta.LogEvent, error) {
+func fetchLoginEventsWithRetry(ctx context.Context, cmd okta.ApiListLogEventsRequest, logLimit int, sleep time.Duration) ([]okta.LogEvent, error) {
 	log := svc1log.FromContext(ctx)
 
 	var allLogs []okta.LogEvent
@@ -121,6 +121,14 @@ func fetchLoginEventsWithRetry(ctx context.Context, cmd okta.ApiListLogEventsReq
 		pastCursor = currentCursor
 		parsedURL, _ := url.Parse(resp.NextPage())
 		currentCursor = parsedURL.Query().Get("after")
+
+		if logLimit > 0 && len(allLogs)+len(logs) >= logLimit {
+			remaining := logLimit - len(allLogs)
+			allLogs = append(allLogs, logs[:remaining]...)
+			log.Info("Users", svc1log.SafeParam("count", len(allLogs)))
+			return allLogs, nil
+		}
+
 		allLogs = append(allLogs, logs...)
 		log.Info("Login Event", svc1log.SafeParam("count", len(allLogs)))
 	}
