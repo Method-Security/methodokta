@@ -11,7 +11,7 @@ import (
 	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
-func EnumerateGroup(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.GroupReport, error) {
+func EnumerateGroup(ctx context.Context, limit int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.GroupReport, error) {
 	log := svc1log.FromContext(ctx)
 
 	resources := methodokta.GroupReport{}
@@ -28,7 +28,7 @@ func EnumerateGroup(ctx context.Context, sleep time.Duration, oktaConfig *okta.C
 	// Fetch all Groups
 	log.Info("Total Groups")
 	getGroupsCmd := client.GroupAPI.ListGroups(ctx)
-	allGroups, err := fetchListGroupsWithRetry(ctx, getGroupsCmd, sleep)
+	allGroups, err := fetchListGroupsWithRetry(ctx, getGroupsCmd, limit, sleep)
 	if err != nil {
 		return &methodokta.GroupReport{}, err
 	}
@@ -109,7 +109,7 @@ func EnumerateGroup(ctx context.Context, sleep time.Duration, oktaConfig *okta.C
 	return &resources, nil
 }
 
-func fetchListGroupsWithRetry(ctx context.Context, cmd okta.ApiListGroupsRequest, sleep time.Duration) ([]okta.Group, error) {
+func fetchListGroupsWithRetry(ctx context.Context, cmd okta.ApiListGroupsRequest, limit int, sleep time.Duration) ([]okta.Group, error) {
 	log := svc1log.FromContext(ctx)
 
 	var allGroups []okta.Group
@@ -130,6 +130,14 @@ func fetchListGroupsWithRetry(ctx context.Context, cmd okta.ApiListGroupsRequest
 		parsedURL, _ := url.Parse(resp.NextPage())
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
+
+		if limit > 0 && len(allGroups)+len(groups) >= limit {
+			remaining := limit - len(allGroups)
+			allGroups = append(allGroups, groups[:remaining]...)
+			log.Info("Groups", svc1log.SafeParam("count", len(allGroups)))
+			return allGroups, nil
+		}
+
 		allGroups = append(allGroups, groups...)
 		log.Info("Groups", svc1log.SafeParam("count", len(allGroups)))
 	}

@@ -17,11 +17,9 @@ func (a *MethodOkta) InitGroupCommand() {
 		Short: "Enumerate Groups",
 		Long:  `Enumerate Groups`,
 		Run: func(cmd *cobra.Command, args []string) {
-			report, err := group.EnumerateGroup(cmd.Context(), a.RequestSleep, a.OktaConfig)
+			report, err := group.EnumerateGroup(cmd.Context(), a.RootFlags.Limit, a.RequestSleep, a.OktaConfig)
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 			}
 			a.OutputSignal.Content = report
 		},

@@ -17,11 +17,9 @@ func (a *MethodOkta) InitUserCommand() {
 		Short: "Enumerate Users",
 		Long:  `Enumerate Users`,
 		Run: func(cmd *cobra.Command, args []string) {
-			report, err := user.EnumerateUser(cmd.Context(), a.RequestSleep, a.OktaConfig)
+			report, err := user.EnumerateUser(cmd.Context(), a.RootFlags.Limit, a.RequestSleep, a.OktaConfig)
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 			}
 			a.OutputSignal.Content = report
 		},
@@ -34,31 +32,24 @@ func (a *MethodOkta) InitUserCommand() {
 		Run: func(cmd *cobra.Command, args []string) {
 			userFlag, err := cmd.Flags().GetString("user")
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 				return
 			}
 			applicationFlag, err := cmd.Flags().GetString("application")
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 				return
 			}
 			daysFlag, err := cmd.Flags().GetInt("days")
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 				return
 			}
 
-			report, err := user.EnumerateLogin(cmd.Context(), userFlag, applicationFlag, daysFlag, a.RequestSleep, a.OktaConfig)
+			report, err := user.EnumerateLogin(cmd.Context(), userFlag, applicationFlag, daysFlag, a.RootFlags.Limit,
+				a.RequestSleep, a.OktaConfig)
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 			}
 			a.OutputSignal.Content = report
 		},

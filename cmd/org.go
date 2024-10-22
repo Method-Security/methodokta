@@ -19,9 +19,7 @@ func (a *MethodOkta) InitOrgCommand() {
 		Run: func(cmd *cobra.Command, args []string) {
 			report, err := org.EnumerateOrg(cmd.Context(), a.RequestSleep, a.OktaConfig)
 			if err != nil {
-				errorMessage := err.Error()
-				a.OutputSignal.ErrorMessage = &errorMessage
-				a.OutputSignal.Status = 1
+				a.OutputSignal.AddError(err)
 			}
 			a.OutputSignal.Content = report
 		},

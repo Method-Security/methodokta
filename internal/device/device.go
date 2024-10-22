@@ -10,7 +10,7 @@ import (
 	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
-func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.DeviceReport, error) {
+func EnumerateDevice(ctx context.Context, limit int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.DeviceReport, error) {
 	log := svc1log.FromContext(ctx)
 
 	resources := methodokta.DeviceReport{}
@@ -27,7 +27,7 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 	// Fetch all Devices
 	log.Info("Total Devices")
 	getDevicescmd := client.DeviceAPI.ListDevices(ctx).Expand("")
-	allDevices, err := fetchDevicesWithRetry(ctx, getDevicescmd, sleep)
+	allDevices, err := fetchDevicesWithRetry(ctx, getDevicescmd, limit, sleep)
 	if err != nil {
 		return &methodokta.DeviceReport{}, err
 	}
@@ -80,7 +80,7 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 
 }
 
-func fetchDevicesWithRetry(ctx context.Context, cmd okta.ApiListDevicesRequest, sleep time.Duration) ([]okta.DeviceList, error) {
+func fetchDevicesWithRetry(ctx context.Context, cmd okta.ApiListDevicesRequest, limit int, sleep time.Duration) ([]okta.DeviceList, error) {
 	log := svc1log.FromContext(ctx)
 
 	var allDevices []okta.DeviceList
@@ -101,6 +101,14 @@ func fetchDevicesWithRetry(ctx context.Context, cmd okta.ApiListDevicesRequest, 
 		parsedURL, _ := url.Parse(resp.NextPage())
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
+
+		if limit > 0 && len(allDevices)+len(devices) >= limit {
+			remaining := limit - len(allDevices)
+			allDevices = append(allDevices, devices[:remaining]...)
+			log.Info("Devices", svc1log.SafeParam("count", len(allDevices)))
+			return allDevices, nil
+		}
+
 		allDevices = append(allDevices, devices...)
 		log.Info("Devices", svc1log.SafeParam("count", len(allDevices)))
 	}

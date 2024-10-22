@@ -12,7 +12,7 @@ import (
 	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
-func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.ApplicationReport, error) {
+func EnumerateApplication(ctx context.Context, limit int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.ApplicationReport, error) {
 	log := svc1log.FromContext(ctx)
 
 	resources := methodokta.ApplicationReport{}
@@ -29,7 +29,7 @@ func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *
 	// Fetch all Applications
 	log.Info("Total Applications")
 	getAppsCmd := client.ApplicationAPI.ListApplications(ctx).Expand("")
-	allApps, err := fetchListApplicationsWithRetry(ctx, getAppsCmd, sleep)
+	allApps, err := fetchListApplicationsWithRetry(ctx, getAppsCmd, limit, sleep)
 	if err != nil {
 		return &methodokta.ApplicationReport{}, err
 	}
@@ -143,7 +143,7 @@ func EnumerateApplication(ctx context.Context, sleep time.Duration, oktaConfig *
 	return &resources, nil
 }
 
-func fetchListApplicationsWithRetry(ctx context.Context, cmd okta.ApiListApplicationsRequest, sleep time.Duration) ([]okta.ListApplications200ResponseInner, error) {
+func fetchListApplicationsWithRetry(ctx context.Context, cmd okta.ApiListApplicationsRequest, limit int, sleep time.Duration) ([]okta.ListApplications200ResponseInner, error) {
 	log := svc1log.FromContext(ctx)
 
 	var allApps []okta.ListApplications200ResponseInner
@@ -164,6 +164,14 @@ func fetchListApplicationsWithRetry(ctx context.Context, cmd okta.ApiListApplica
 		parsedURL, _ := url.Parse(resp.NextPage())
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
+
+		if limit > 0 && len(allApps)+len(apps) >= limit {
+			remaining := limit - len(allApps)
+			allApps = append(allApps, apps[:remaining]...)
+			log.Info("Applications", svc1log.SafeParam("count", len(allApps)))
+			return allApps, nil
+		}
+
 		allApps = append(allApps, apps...)
 		log.Info("Applications", svc1log.SafeParam("count", len(allApps)))
 	}

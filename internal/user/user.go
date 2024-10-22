@@ -12,9 +12,8 @@ import (
 	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
-func EnumerateUser(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.UserReport, error) {
+func EnumerateUser(ctx context.Context, limit int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.UserReport, error) {
 	log := svc1log.FromContext(ctx)
-
 	resources := methodokta.UserReport{}
 	errors := []string{}
 
@@ -26,17 +25,10 @@ func EnumerateUser(ctx context.Context, sleep time.Duration, oktaConfig *okta.Co
 		return &methodokta.UserReport{}, err
 	}
 
-	// Print Total Users
-	printUsersCmd := client.GroupAPI.ListGroups(ctx)
-	err = printUserTotal(ctx, printUsersCmd)
-	if err != nil {
-		return &methodokta.UserReport{}, err
-	}
-
 	// Fetch all Users
 	log.Info("Total Users")
 	getUserscmd := client.UserAPI.ListUsers(ctx)
-	allUsers, err := fetchUsersWithRetry(ctx, getUserscmd, sleep)
+	allUsers, err := fetchUsersWithRetry(ctx, getUserscmd, limit, sleep)
 	if err != nil {
 		return &methodokta.UserReport{}, err
 	}
@@ -147,29 +139,7 @@ func EnumerateUser(ctx context.Context, sleep time.Duration, oktaConfig *okta.Co
 	return &resources, nil
 }
 
-func printUserTotal(ctx context.Context, cmd okta.ApiListGroupsRequest) error {
-	log := svc1log.FromContext(ctx)
-
-	groups, _, err := cmd.Q("everyone").Expand("stats").Execute()
-	if err != nil {
-		return err
-	}
-
-	for _, group := range groups {
-		if embeddedStats, ok := group.Embedded["stats"]; ok {
-			if usersCount, ok := embeddedStats["usersCount"].(float64); ok {
-				log.Info("Total Users", svc1log.SafeParam("count", usersCount))
-			} else {
-				log.Info("usersCount not found in group stats")
-			}
-		} else {
-			log.Info("_embedded.stats not found")
-		}
-	}
-	return nil
-}
-
-func fetchUsersWithRetry(ctx context.Context, cmd okta.ApiListUsersRequest, sleep time.Duration) ([]okta.User, error) {
+func fetchUsersWithRetry(ctx context.Context, cmd okta.ApiListUsersRequest, limit int, sleep time.Duration) ([]okta.User, error) {
 	log := svc1log.FromContext(ctx)
 
 	var allUsers []okta.User
@@ -190,6 +160,14 @@ func fetchUsersWithRetry(ctx context.Context, cmd okta.ApiListUsersRequest, slee
 		parsedURL, _ := url.Parse(resp.NextPage())
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
+
+		if limit > 0 && len(allUsers)+len(users) >= limit {
+			remaining := limit - len(allUsers)
+			allUsers = append(allUsers, users[:remaining]...)
+			log.Info("Users", svc1log.SafeParam("count", len(allUsers)))
+			return allUsers, nil
+		}
+
 		allUsers = append(allUsers, users...)
 		log.Info("Users", svc1log.SafeParam("count", len(allUsers)))
 	}
