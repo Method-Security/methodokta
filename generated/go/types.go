@@ -5,9 +5,8 @@ package methodokta
 import (
 	json "encoding/json"
 	fmt "fmt"
-	time "time"
-
 	core "github.com/method-security/methodokta/generated/go/core"
+	time "time"
 )
 
 type Application struct {

@@ -3,16 +3,18 @@ package user
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/url"
 	"strings"
 	"time"
 
 	methodokta "github.com/method-security/methodokta/generated/go"
 	"github.com/okta/okta-sdk-golang/v5/okta"
+	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
 func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string, days int, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.LoginReport, error) {
+	log := svc1log.FromContext(ctx)
+
 	resources := methodokta.LoginReport{}
 	errors := []string{}
 
@@ -31,8 +33,9 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	filter := "eventType eq \"user.authentication.sso\""
 
 	// Fetch System Logs for Application SSO Logins
+	log.Info("Total Login Events")
 	loginEventCmd := client.SystemLogAPI.ListLogEvents(ctx).Q(query).Filter(filter).Since(since).Limit(limit)
-	allLogs, err := fetchLoginEventsWithRetry(loginEventCmd, sleep)
+	allLogs, err := fetchLoginEventsWithRetry(ctx, loginEventCmd, sleep)
 	if err != nil {
 		return &methodokta.LoginReport{}, err
 	}
@@ -97,7 +100,9 @@ func EnumerateLogin(ctx context.Context, userFlag string, applicationFlag string
 	return &resources, nil
 }
 
-func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Duration) ([]okta.LogEvent, error) {
+func fetchLoginEventsWithRetry(ctx context.Context, cmd okta.ApiListLogEventsRequest, sleep time.Duration) ([]okta.LogEvent, error) {
+	log := svc1log.FromContext(ctx)
+
 	var allLogs []okta.LogEvent
 	sleepExp := sleep
 	pastCursor := "-1"
@@ -105,7 +110,7 @@ func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Dura
 	for pastCursor != currentCursor {
 		logs, resp, err := cmd.After(currentCursor).Execute()
 		if err != nil {
-			log.Printf("LOGINS: fetchLoginEvents sleep - %v", sleepExp)
+			log.Info("Login Event", svc1log.SafeParam("sleep", sleepExp))
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -117,7 +122,7 @@ func fetchLoginEventsWithRetry(cmd okta.ApiListLogEventsRequest, sleep time.Dura
 		parsedURL, _ := url.Parse(resp.NextPage())
 		currentCursor = parsedURL.Query().Get("after")
 		allLogs = append(allLogs, logs...)
-		log.Printf("LOGINS: fetchLoginEvents count - %v", len(allLogs))
+		log.Info("Login Event", svc1log.SafeParam("count", len(allLogs)))
 	}
 	return allLogs, nil
 }
