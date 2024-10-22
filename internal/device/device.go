@@ -7,9 +7,12 @@ import (
 
 	methodokta "github.com/method-security/methodokta/generated/go"
 	"github.com/okta/okta-sdk-golang/v5/okta"
+	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
 func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.Configuration) (*methodokta.DeviceReport, error) {
+	log := svc1log.FromContext(ctx)
+
 	resources := methodokta.DeviceReport{}
 	errors := []string{}
 
@@ -22,8 +25,9 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 	}
 
 	// Fetch all Devices
+	log.Info("Total Devices")
 	getDevicescmd := client.DeviceAPI.ListDevices(ctx).Expand("")
-	allDevices, err := fetchDevicesWithRetry(getDevicescmd, sleep)
+	allDevices, err := fetchDevicesWithRetry(ctx, getDevicescmd, sleep)
 	if err != nil {
 		return &methodokta.DeviceReport{}, err
 	}
@@ -49,9 +53,11 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 			Created:      *d.Created,
 		}
 
+		log.Info("Users for Device", svc1log.SafeParam("Name", d.Profile.DisplayName))
+
 		// Device User
 		getDeviceUserCmd := client.DeviceAPI.ListDeviceUsers(ctx, *d.Id)
-		users, err := fetchDeviceUserssWithRetry(getDeviceUserCmd, sleep)
+		users, err := fetchDeviceUsersWithRetry(ctx, getDeviceUserCmd, sleep)
 		if err != nil {
 			errors = append(errors, err.Error())
 		} else {
@@ -74,7 +80,9 @@ func EnumerateDevice(ctx context.Context, sleep time.Duration, oktaConfig *okta.
 
 }
 
-func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) ([]okta.DeviceList, error) {
+func fetchDevicesWithRetry(ctx context.Context, cmd okta.ApiListDevicesRequest, sleep time.Duration) ([]okta.DeviceList, error) {
+	log := svc1log.FromContext(ctx)
+
 	var allDevices []okta.DeviceList
 	sleepExp := sleep
 	cursor := ""
@@ -82,6 +90,7 @@ func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) 
 	for hasNextPage {
 		devices, resp, err := cmd.After(cursor).Execute()
 		if err != nil {
+			log.Info("Devices", svc1log.SafeParam("sleep", sleepExp))
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
@@ -93,23 +102,28 @@ func fetchDevicesWithRetry(cmd okta.ApiListDevicesRequest, sleep time.Duration) 
 		cursor = parsedURL.Query().Get("after")
 		hasNextPage = resp.HasNextPage()
 		allDevices = append(allDevices, devices...)
+		log.Info("Devices", svc1log.SafeParam("count", len(allDevices)))
 	}
 	return allDevices, nil
 }
 
-func fetchDeviceUserssWithRetry(cmd okta.ApiListDeviceUsersRequest, sleep time.Duration) ([]okta.DeviceUser, error) {
+func fetchDeviceUsersWithRetry(ctx context.Context, cmd okta.ApiListDeviceUsersRequest, sleep time.Duration) ([]okta.DeviceUser, error) {
+	log := svc1log.FromContext(ctx)
+
 	sleepExp := sleep
-	devices, _, err := cmd.Execute()
+	users, _, err := cmd.Execute()
 	for err != nil {
-		devices, _, err = cmd.Execute()
+		users, _, err = cmd.Execute()
 		if err != nil {
+			log.Info("Users", svc1log.SafeParam("sleep", sleepExp))
 			if !retry(sleepExp, err) {
 				return nil, err
 			}
 			sleepExp *= 2
 		}
 	}
-	return devices, nil
+	log.Info("Users", svc1log.SafeParam("count", len(users)))
+	return users, nil
 }
 
 func retry(sleep time.Duration, err error) bool {

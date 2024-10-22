@@ -141,7 +141,7 @@ func getOktaConfig(a *MethodOkta) (*okta.Configuration, error) {
 	// Get Domain
 	domain := ""
 	if a.RootFlags.OktaData.Domain != "" {
-		domain = a.RootFlags.OktaData.APIToken
+		domain = a.RootFlags.OktaData.Domain
 	} else if len(os.Getenv("OKTA_DOMAIN")) != 0 {
 		domain = os.Getenv("OKTA_DOMAIN")
 	} else {
